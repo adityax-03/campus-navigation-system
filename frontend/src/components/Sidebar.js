@@ -18,7 +18,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     <aside className="dashboard-sidebar">
       {/* Sidebar Logo */}
       <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">R</div>
+        <div className="sidebar-logo-icon">📍</div>
         <div className="sidebar-logo-text">
           <h2>CCNS</h2>
           <p>Campus Navigation System</p>

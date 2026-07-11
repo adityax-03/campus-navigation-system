@@ -27,7 +27,7 @@ const Header = ({ setSearchQuery }) => {
         <input
           type="text"
           className="header-search-input"
-          placeholder="Search for places (e.g. Block 38, Library, Cafeteria)..."
+          placeholder="Search LPU campus (e.g. Block 34, Block 13, Girls Hostel)..."
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>

@@ -161,9 +161,17 @@ const MapView = ({
           {/* Main campus green area */}
           <rect x="50" y="40" width="600" height="470" rx="20" fill="var(--bg-map)" opacity="0.6" stroke="var(--border-color)" strokeWidth="2" />
           
-          {/* Central Plaza Park Circle */}
-          <circle cx="350" cy="310" r="45" fill="#d1fae5" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
-          <text x="350" y="313" fill="#065f46" fontSize="9" fontWeight="700" textAnchor="middle" opacity="0.6">Central Plaza</text>
+          {/* LPU Grand Entry Lawns */}
+          <ellipse cx="490" cy="460" rx="40" ry="25" fill="#d1fae5" stroke="#10b981" strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+          <text x="490" y="463" fill="#065f46" fontSize="8" fontWeight="700" textAnchor="middle" opacity="0.6">LPU Lawns</text>
+          
+          {/* LPU Sports Field */}
+          <rect x="360" y="35" width="100" height="50" rx="10" fill="#dcfce7" stroke="#22c55e" strokeWidth="1" opacity="0.7" />
+          <text x="410" y="63" fill="#15803d" fontSize="8" fontWeight="700" textAnchor="middle" opacity="0.6">LPU Sports Field</text>
+
+          {/* LPU Central Courtyard (Plaza) */}
+          <circle cx="190" cy="175" r="30" fill="#e0e7ff" stroke="var(--primary-color)" strokeWidth="1" strokeDasharray="3 3" opacity="0.8" />
+          <text x="190" y="178" fill="var(--primary-dark)" fontSize="9" fontWeight="700" textAnchor="middle" opacity="0.6">Central Plaza</text>
 
           {/* Draw Roads / Connections */}
           <g>

@@ -22,87 +22,159 @@ struct Edge {
 unordered_map<string, vector<Edge>> graph;
 
 void initGraph() {
-    // Add edges matching JS mapData.js
-    graph["main-gate"].push_back({"j-gate", 40, 0.5, true});
-    graph["j-gate"].push_back({"main-gate", 40, 0.5, true});
+    // Add LPU edges
+    graph["gate-1"].push_back({"j-gate", 50, 0.6, true});
+    graph["j-gate"].push_back({"gate-1", 50, 0.6, true});
     
-    graph["j-gate"].push_back({"block-33", 80, 1.0, true});
-    graph["block-33"].push_back({"j-gate", 80, 1.0, true});
+    graph["j-gate"].push_back({"block-1", 60, 0.8, true});
+    graph["block-1"].push_back({"j-gate", 60, 0.8, true});
     
-    graph["block-33"].push_back({"parking-1", 50, 0.8, true});
-    graph["parking-1"].push_back({"block-33", 50, 0.8, true});
+    graph["j-gate"].push_back({"block-2", 100, 1.3, true});
+    graph["block-2"].push_back({"j-gate", 100, 1.3, true});
     
-    graph["j-gate"].push_back({"j-plaza-south", 70, 1.0, true});
-    graph["j-plaza-south"].push_back({"j-gate", 70, 1.0, true});
+    graph["block-1"].push_back({"block-3", 50, 0.7, true});
+    graph["block-3"].push_back({"block-1", 50, 0.7, true});
     
-    graph["j-gate"].push_back({"auditorium", 100, 1.5, true});
-    graph["auditorium"].push_back({"j-gate", 100, 1.5, true});
+    graph["block-2"].push_back({"block-6", 60, 0.8, true});
+    graph["block-6"].push_back({"block-2", 60, 0.8, true});
     
-    graph["block-33"].push_back({"block-32", 90, 1.2, true});
-    graph["block-32"].push_back({"block-33", 90, 1.2, true});
+    graph["block-3"].push_back({"j-physio", 40, 0.5, true});
+    graph["j-physio"].push_back({"block-3", 40, 0.5, true});
     
-    graph["block-32"].push_back({"j-plaza-west", 120, 1.8, true});
-    graph["j-plaza-west"].push_back({"block-32", 120, 1.8, true});
+    graph["block-6"].push_back({"j-physio", 50, 0.7, true});
+    graph["j-physio"].push_back({"block-6", 50, 0.7, true});
     
-    graph["j-plaza-west"].push_back({"j-plaza-south", 120, 1.8, true});
-    graph["j-plaza-south"].push_back({"j-plaza-west", 120, 1.8, true});
+    graph["j-physio"].push_back({"block-4", 70, 1.0, true});
+    graph["block-4"].push_back({"j-physio", 70, 1.0, true});
     
-    graph["j-plaza-west"].push_back({"admin-block", 80, 1.0, true});
-    graph["admin-block"].push_back({"j-plaza-west", 80, 1.0, true});
+    graph["j-physio"].push_back({"block-8", 80, 1.1, false});
+    graph["block-8"].push_back({"j-physio", 80, 1.1, false});
     
-    graph["admin-block"].push_back({"j-library", 50, 0.7, true});
-    graph["j-library"].push_back({"admin-block", 50, 0.7, true});
+    graph["block-4"].push_back({"block-7", 50, 0.7, true});
+    graph["block-7"].push_back({"block-4", 50, 0.7, true});
     
-    graph["j-library"].push_back({"library", 50, 0.7, true});
-    graph["library"].push_back({"j-library", 50, 0.7, true});
+    graph["block-8"].push_back({"block-13", 60, 0.8, true});
+    graph["block-13"].push_back({"block-8", 60, 0.8, true});
     
-    graph["j-library"].push_back({"j-plaza-north", 160, 2.2, true});
-    graph["j-plaza-north"].push_back({"j-library", 160, 2.2, true});
+    graph["block-7"].push_back({"j-welfare", 40, 0.5, true});
+    graph["j-welfare"].push_back({"block-7", 40, 0.5, true});
     
-    graph["library"].push_back({"block-31", 90, 1.5, false}); // Stairs!
-    graph["block-31"].push_back({"library", 90, 1.5, false});
+    graph["block-13"].push_back({"j-welfare", 50, 0.7, true});
+    graph["j-welfare"].push_back({"block-13", 50, 0.7, true});
     
-    graph["block-31"].push_back({"cafeteria", 80, 1.0, true});
-    graph["cafeteria"].push_back({"block-31", 80, 1.0, true});
+    graph["j-welfare"].push_back({"gh-9-12", 60, 0.8, true});
+    graph["gh-9-12"].push_back({"j-welfare", 60, 0.8, true});
     
-    graph["cafeteria"].push_back({"j-plaza-north", 60, 0.8, true});
-    graph["j-plaza-north"].push_back({"cafeteria", 60, 0.8, true});
+    graph["j-welfare"].push_back({"block-15", 90, 1.2, true});
+    graph["block-15"].push_back({"j-welfare", 90, 1.2, true});
     
-    graph["central-plaza"].push_back({"j-plaza-south", 80, 1.0, true});
-    graph["j-plaza-south"].push_back({"central-plaza", 80, 1.0, true});
+    graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
+    graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
     
-    graph["central-plaza"].push_back({"j-plaza-north", 80, 1.0, true});
-    graph["j-plaza-north"].push_back({"central-plaza", 80, 1.0, true});
+    graph["j-hotel"].push_back({"block-18", 70, 1.0, true});
+    graph["block-18"].push_back({"j-hotel", 70, 1.0, true});
     
-    graph["central-plaza"].push_back({"j-plaza-west", 100, 1.2, true});
-    graph["j-plaza-west"].push_back({"central-plaza", 100, 1.2, true});
+    graph["block-18"].push_back({"gh-21", 60, 0.8, true});
+    graph["gh-21"].push_back({"block-18", 60, 0.8, true});
     
-    graph["central-plaza"].push_back({"j-plaza-east", 100, 1.2, true});
-    graph["j-plaza-east"].push_back({"central-plaza", 100, 1.2, true});
+    graph["block-18"].push_back({"block-19", 50, 0.7, true});
+    graph["block-19"].push_back({"block-18", 50, 0.7, true});
     
-    graph["j-plaza-south"].push_back({"j-plaza-east", 110, 1.6, true});
-    graph["j-plaza-east"].push_back({"j-plaza-south", 110, 1.6, true});
+    graph["block-19"].push_back({"block-20", 50, 0.7, true});
+    graph["block-20"].push_back({"block-19", 50, 0.7, true});
     
-    graph["j-plaza-east"].push_back({"block-38", 100, 1.4, true});
-    graph["block-38"].push_back({"j-plaza-east", 100, 1.4, true});
+    graph["block-20"].push_back({"j-welfare", 110, 1.5, true});
+    graph["j-welfare"].push_back({"block-20", 110, 1.5, true});
     
-    graph["j-plaza-north"].push_back({"j-hostel", 140, 2.0, true});
-    graph["j-hostel"].push_back({"j-plaza-north", 140, 2.0, true});
+    graph["j-hotel"].push_back({"j-plaza-south", 120, 1.6, true});
+    graph["j-plaza-south"].push_back({"j-hotel", 120, 1.6, true});
     
-    graph["j-hostel"].push_back({"hostel-a", 60, 0.8, true});
-    graph["hostel-a"].push_back({"j-hostel", 60, 0.8, true});
+    graph["j-plaza-south"].push_back({"block-29", 40, 0.5, true});
+    graph["block-29"].push_back({"j-plaza-south", 40, 0.5, true});
     
-    graph["j-hostel"].push_back({"block-38", 70, 1.0, true});
-    graph["block-38"].push_back({"j-hostel", 70, 1.0, true});
+    graph["j-plaza-south"].push_back({"block-32", 40, 0.5, true});
+    graph["block-32"].push_back({"j-plaza-south", 40, 0.5, true});
     
-    graph["block-38"].push_back({"hostel-b", 100, 1.5, true});
-    graph["hostel-b"].push_back({"block-38", 100, 1.5, true});
+    graph["block-29"].push_back({"block-30", 50, 0.7, true});
+    graph["block-30"].push_back({"block-29", 50, 0.7, true});
     
-    graph["auditorium"].push_back({"sports-complex", 120, 1.8, true});
-    graph["sports-complex"].push_back({"auditorium", 120, 1.8, true});
+    graph["block-30"].push_back({"block-31", 40, 0.5, true});
+    graph["block-31"].push_back({"block-30", 40, 0.5, true});
     
-    graph["hostel-b"].push_back({"sports-complex", 100, 1.5, true});
-    graph["sports-complex"].push_back({"hostel-b", 100, 1.5, true});
+    graph["block-32"].push_back({"j-science-branch", 30, 0.4, true});
+    graph["j-science-branch"].push_back({"block-32", 30, 0.4, true});
+    
+    graph["j-science-branch"].push_back({"block-25-26", 100, 1.3, true});
+    graph["block-25-26"].push_back({"j-science-branch", 100, 1.3, true});
+    
+    graph["block-25-26"].push_back({"block-27", 50, 0.7, true});
+    graph["block-27"].push_back({"block-25-26", 50, 0.7, true});
+    
+    graph["block-27"].push_back({"block-28", 50, 0.7, true});
+    graph["block-28"].push_back({"block-27", 50, 0.7, true});
+    
+    graph["block-29"].push_back({"block-33", 60, 0.8, true});
+    graph["block-33"].push_back({"block-29", 60, 0.8, true});
+    
+    graph["block-33"].push_back({"block-34", 40, 0.5, true});
+    graph["block-34"].push_back({"block-33", 40, 0.5, true});
+    
+    graph["block-34"].push_back({"block-35", 40, 0.5, true});
+    graph["block-35"].push_back({"block-34", 40, 0.5, true});
+    
+    graph["block-35"].push_back({"block-36", 50, 0.7, true});
+    graph["block-36"].push_back({"block-35", 50, 0.7, true});
+    
+    graph["block-36"].push_back({"block-37", 40, 0.5, true});
+    graph["block-37"].push_back({"block-36", 40, 0.5, true});
+    
+    graph["block-37"].push_back({"block-38", 40, 0.5, true});
+    graph["block-38"].push_back({"block-37", 40, 0.5, true});
+    
+    graph["block-38"].push_back({"block-31", 50, 0.7, true});
+    graph["block-31"].push_back({"block-38", 50, 0.7, true});
+    
+    graph["block-33"].push_back({"j-plaza-inner", 30, 0.4, true});
+    graph["j-plaza-inner"].push_back({"block-33", 30, 0.4, true});
+    
+    graph["block-37"].push_back({"j-plaza-inner", 30, 0.4, true});
+    graph["j-plaza-inner"].push_back({"block-37", 30, 0.4, true});
+    
+    graph["j-plaza-inner"].push_back({"j-top-road", 80, 1.1, true});
+    graph["j-top-road"].push_back({"j-plaza-inner", 80, 1.1, true});
+    
+    graph["j-top-road"].push_back({"apartments-41-44", 40, 0.5, true});
+    graph["apartments-41-44"].push_back({"j-top-road", 40, 0.5, true});
+    
+    graph["j-top-road"].push_back({"block-47", 30, 0.4, true});
+    graph["block-47"].push_back({"j-top-road", 30, 0.4, true});
+    
+    graph["j-top-road"].push_back({"bh-45", 60, 0.8, true});
+    graph["bh-45"].push_back({"j-top-road", 60, 0.8, true});
+    
+    graph["block-47"].push_back({"bh-48-50", 100, 1.3, true});
+    graph["bh-48-50"].push_back({"block-47", 100, 1.3, true});
+    
+    graph["bh-48-50"].push_back({"bh-51-53", 70, 1.0, true});
+    graph["bh-51-53"].push_back({"bh-48-50", 70, 1.0, true});
+    
+    graph["bh-51-53"].push_back({"sports-ground", 80, 1.1, true});
+    graph["sports-ground"].push_back({"bh-51-53", 80, 1.1, true});
+    
+    graph["sports-ground"].push_back({"j-sports-road", 40, 0.5, true});
+    graph["j-sports-road"].push_back({"sports-ground", 40, 0.5, true});
+    
+    graph["j-sports-road"].push_back({"block-56", 110, 1.5, true});
+    graph["block-56"].push_back({"j-sports-road", 110, 1.5, true});
+    
+    graph["block-56"].push_back({"block-57", 40, 0.5, true});
+    graph["block-57"].push_back({"block-56", 40, 0.5, true});
+    
+    graph["block-57"].push_back({"block-58", 30, 0.4, true});
+    graph["block-58"].push_back({"block-57", 30, 0.4, true});
+    
+    graph["j-sports-road"].push_back({"block-15", 180, 2.4, true});
+    graph["block-15"].push_back({"j-sports-road", 180, 2.4, true});
 }
 
 // ── Dijkstra's Solver ──

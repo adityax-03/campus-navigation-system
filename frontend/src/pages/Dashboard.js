@@ -230,36 +230,36 @@ const Dashboard = () => {
               <div className="stats-card">
                 <div className="stats-card-icon academic">🏫</div>
                 <div className="stats-card-info">
-                  <h3>12 Buildings</h3>
-                  <p>Academic Blocks</p>
+                  <h3>22 Blocks</h3>
+                  <p>Academic Areas</p>
                 </div>
               </div>
               <div className="stats-card">
                 <div className="stats-card-icon hostels">🏠</div>
                 <div className="stats-card-info">
-                  <h3>8 Hostels</h3>
+                  <h3>14 Hostels</h3>
                   <p>Student Hostels</p>
                 </div>
               </div>
               <div className="stats-card">
                 <div className="stats-card-icon cafeteria">☕</div>
                 <div className="stats-card-info">
-                  <h3>5 Cafeterias</h3>
+                  <h3>15+ Cafeterias</h3>
                   <p>Food Courts</p>
                 </div>
               </div>
               <div className="stats-card">
                 <div className="stats-card-icon library">📖</div>
                 <div className="stats-card-info">
-                  <h3>2 Libraries</h3>
+                  <h3>3 Libraries</h3>
                   <p>Campus Libraries</p>
                 </div>
               </div>
               <div className="stats-card">
                 <div className="stats-card-icon parking">🅿️</div>
                 <div className="stats-card-info">
-                  <h3>4 Areas</h3>
-                  <p>Parking Lots</p>
+                  <h3>4 Complexes</h3>
+                  <p>Sports Zones</p>
                 </div>
               </div>
             </div>

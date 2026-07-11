@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../config";
 import { CAMPUS_NODES, generateDirections, dijkstra, bfs, dfs } from "../services/mapData";
 import { useAuth } from "../context/AuthContext";
 
@@ -31,28 +33,50 @@ const RoutePlanner = ({
     setDirections([]);
   };
 
-  const handleFindRoute = () => {
+  const handleFindRoute = async () => {
     if (!selectedFrom || !selectedTo) return;
 
     let result = null;
-    
-    // Run selected pathfinding algorithm
-    if (algo === "dijkstra") {
-      result = dijkstra(selectedFrom, selectedTo, accessibility);
-    } else if (algo === "bfs") {
-      result = bfs(selectedFrom, selectedTo, accessibility);
-    } else if (algo === "dfs") {
-      result = dfs(selectedFrom, selectedTo, accessibility);
+
+    try {
+      // 1. Try backend server query (which executes C++ pathfinder)
+      const response = await axios.get(`${API_BASE_URL}/api/routes/route`, {
+        params: {
+          from: selectedFrom,
+          to: selectedTo,
+          algo,
+          accessibility: accessibility ? "1" : "0"
+        },
+        timeout: 2000 // fast timeout fallback
+      });
+
+      if (response.data && response.data.success) {
+        result = response.data;
+        console.log("Calculated route via high-performance C++ backend pathfinder!");
+      }
+    } catch (err) {
+      console.warn("Backend pathfinder failed/offline, falling back to local JS solver:", err.message);
     }
 
-    if (result && result.path.length > 0) {
+    // 2. Local JS Fallback Solver
+    if (!result) {
+      if (algo === "dijkstra") {
+        result = dijkstra(selectedFrom, selectedTo, accessibility);
+      } else if (algo === "bfs") {
+        result = bfs(selectedFrom, selectedTo, accessibility);
+      } else if (algo === "dfs") {
+        result = dfs(selectedFrom, selectedTo, accessibility);
+      }
+    }
+
+    if (result && result.path && result.path.length > 0) {
       setRoutePath(result.path);
       setRouteInfo(result);
       setDirections(generateDirections(result.path));
       
       // Add to user navigation history log
-      const startNodeName = CAMPUS_NODES[selectedFrom].name;
-      const endNodeName = CAMPUS_NODES[selectedTo].name;
+      const startNodeName = CAMPUS_NODES[selectedFrom]?.name || selectedFrom;
+      const endNodeName = CAMPUS_NODES[selectedTo]?.name || selectedTo;
       addHistory({
         from: startNodeName,
         to: endNodeName,
@@ -61,18 +85,56 @@ const RoutePlanner = ({
       });
 
       // Calculate an Alternative Route using DFS for contrast (unless DFS is already selected)
+      let altResult = null;
       if (algo !== "dfs") {
-        const altResult = dfs(selectedFrom, selectedTo, accessibility);
-        // Make sure it is actually different
-        if (altResult && altResult.path.length > 0 && JSON.stringify(altResult.path) !== JSON.stringify(result.path)) {
+        try {
+          const altResponse = await axios.get(`${API_BASE_URL}/api/routes/route`, {
+            params: {
+              from: selectedFrom,
+              to: selectedTo,
+              algo: "dfs",
+              accessibility: accessibility ? "1" : "0"
+            },
+            timeout: 1500
+          });
+          if (altResponse.data && altResponse.data.success) {
+            altResult = altResponse.data;
+          }
+        } catch (e) {
+          // ignore
+        }
+        if (!altResult) {
+          altResult = dfs(selectedFrom, selectedTo, accessibility);
+        }
+
+        if (altResult && altResult.path && altResult.path.length > 0 && JSON.stringify(altResult.path) !== JSON.stringify(result.path)) {
           setAltRouteInfo(altResult);
         } else {
           setAltRouteInfo(null);
         }
       } else {
         // If DFS selected, show Dijkstra as Alternative
-        const altResult = dijkstra(selectedFrom, selectedTo, accessibility);
-        if (altResult && altResult.path.length > 0 && JSON.stringify(altResult.path) !== JSON.stringify(result.path)) {
+        try {
+          const altResponse = await axios.get(`${API_BASE_URL}/api/routes/route`, {
+            params: {
+              from: selectedFrom,
+              to: selectedTo,
+              algo: "dijkstra",
+              accessibility: accessibility ? "1" : "0"
+            },
+            timeout: 1500
+          });
+          if (altResponse.data && altResponse.data.success) {
+            altResult = altResponse.data;
+          }
+        } catch (e) {
+          // ignore
+        }
+        if (!altResult) {
+          altResult = dijkstra(selectedFrom, selectedTo, accessibility);
+        }
+
+        if (altResult && altResult.path && altResult.path.length > 0 && JSON.stringify(altResult.path) !== JSON.stringify(result.path)) {
           setAltRouteInfo(altResult);
         } else {
           setAltRouteInfo(null);

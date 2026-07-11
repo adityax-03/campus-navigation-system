@@ -1,9 +1,10 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 const AuthContext = createContext();
 
-const API_URL = "http://localhost:5001/api/auth";
+const API_URL = `${API_BASE_URL}/api/auth`;
 
 // Default mockup user profile matching the UI layout
 const DEFAULT_MOCK_USER = {
@@ -12,14 +13,14 @@ const DEFAULT_MOCK_USER = {
   email: "aditya.gupta@college.edu",
   registrationNo: "2023CS45",
   role: "Student",
-  favorites: ["block-32", "library"],
+  favorites: ["block-32", "block-34"],
   history: [
     {
-      from: "Block 32",
-      to: "Block 38",
+      from: "Block 32 (Admission)",
+      to: "Block 38 (Civil Eng)",
       date: new Date().toISOString(),
-      distance: "550m",
-      time: "8 min"
+      distance: "490m",
+      time: "7 min"
     }
   ]
 };
@@ -199,7 +200,7 @@ export const AuthProvider = ({ children }) => {
 
     // Sync backend
     try {
-      await axios.put("http://localhost:5001/api/user/favorites", { favorites });
+      await axios.put(`${API_BASE_URL}/api/user/favorites`, { favorites });
     } catch (err) {
       console.warn("Could not sync favorites to backend:", err.message);
     }
@@ -234,7 +235,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     try {
-      await axios.post("http://localhost:5001/api/user/history", routeLog);
+      await axios.post(`${API_BASE_URL}/api/user/history`, routeLog);
     } catch (err) {
       console.warn("Could not sync history to backend:", err.message);
     }
