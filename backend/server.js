@@ -32,7 +32,8 @@ const isProd = process.env.NODE_ENV === "production";
 
 // ── Auto Compile C++ Pathfinder ──
 const cppPath = path.join(__dirname, "cpp", "pathfinder.cpp");
-const binaryPath = path.join(__dirname, "cpp", "pathfinder");
+const binaryName = process.platform === "win32" ? "pathfinder.exe" : "pathfinder";
+const binaryPath = path.join(__dirname, "cpp", binaryName);
 
 console.log("Checking C++ source code at:", cppPath);
 if (fs.existsSync(cppPath)) {

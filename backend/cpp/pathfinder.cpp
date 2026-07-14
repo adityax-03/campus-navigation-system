@@ -69,7 +69,7 @@ void initGraph() {
     graph["block-15"].push_back({"j-welfare", 90, 1.2, true});
     
     graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
-    graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
+    graph["j-hotel"].push_back({"block-15", 30, 0.4, true});
     
     graph["j-hotel"].push_back({"block-18", 70, 1.0, true});
     graph["block-18"].push_back({"j-hotel", 70, 1.0, true});
