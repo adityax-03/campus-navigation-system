@@ -124,17 +124,21 @@ const Dashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {user.history.map((log, index) => (
-                    <tr key={index} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td style={{ padding: "12px 6px", fontWeight: "600" }}>{log.from}</td>
-                      <td style={{ padding: "12px 6px", fontWeight: "600" }}>{log.to}</td>
-                      <td style={{ padding: "12px 6px" }}>{log.distance}</td>
-                      <td style={{ padding: "12px 6px" }}>{log.time}</td>
-                      <td style={{ padding: "12px 6px", fontSize: "12px", color: "var(--text-muted)" }}>
-                        {new Date(log.date).toLocaleString()}
-                      </td>
-                    </tr>
-                  ))}
+                  {user.history.filter(Boolean).map((log, index) => {
+                    const dateObj = log.date ? new Date(log.date) : null;
+                    const dateText = dateObj && !isNaN(dateObj.getTime()) ? dateObj.toLocaleString() : "N/A";
+                    return (
+                      <tr key={index} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                        <td style={{ padding: "12px 6px", fontWeight: "600" }}>{log.from || "N/A"}</td>
+                        <td style={{ padding: "12px 6px", fontWeight: "600" }}>{log.to || "N/A"}</td>
+                        <td style={{ padding: "12px 6px" }}>{log.distance || "N/A"}</td>
+                        <td style={{ padding: "12px 6px" }}>{log.time || "N/A"}</td>
+                        <td style={{ padding: "12px 6px", fontSize: "12px", color: "var(--text-muted)" }}>
+                          {dateText}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             ) : (

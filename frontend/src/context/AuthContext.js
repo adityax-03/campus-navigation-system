@@ -6,6 +6,15 @@ const AuthContext = createContext();
 
 const API_URL = `${API_BASE_URL}/api/auth`;
 
+const safeParse = (str, fallback) => {
+  if (!str || str === "undefined") return fallback;
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    return fallback;
+  }
+};
+
 // Default mockup user profile matching the UI layout
 const DEFAULT_MOCK_USER = {
   id: "mock-user-id-1",
@@ -49,20 +58,14 @@ export const AuthProvider = ({ children }) => {
           console.warn("Backend auth failed, falling back to mock session:", err.message);
           // Backend offline or error, try local storage mock user
           const mockUser = localStorage.getItem("ccns-mock-user");
-          if (mockUser) {
-            setUser(JSON.parse(mockUser));
-          } else {
-            // Seed default mock user
-            localStorage.setItem("ccns-mock-user", JSON.stringify(DEFAULT_MOCK_USER));
-            setUser(DEFAULT_MOCK_USER);
-          }
+          setUser(safeParse(mockUser, DEFAULT_MOCK_USER));
         }
       } else {
         // No token, see if mock user is logged in
         const mockActive = localStorage.getItem("ccns-mock-active") === "true";
         if (mockActive) {
           const mockUser = localStorage.getItem("ccns-mock-user");
-          setUser(mockUser ? JSON.parse(mockUser) : DEFAULT_MOCK_USER);
+          setUser(safeParse(mockUser, DEFAULT_MOCK_USER));
         }
       }
       setLoading(false);
@@ -101,7 +104,7 @@ export const AuthProvider = ({ children }) => {
       
       // 2. Mock Fallback
       // Let's check against mock database in local storage
-      let mockUsers = JSON.parse(localStorage.getItem("ccns-mock-users-list") || "[]");
+      let mockUsers = safeParse(localStorage.getItem("ccns-mock-users-list"), []);
       
       // Add default mock user to database list if it's empty
       if (mockUsers.length === 0) {
@@ -164,7 +167,7 @@ export const AuthProvider = ({ children }) => {
         password // Keep it inside local DB list
       };
 
-      let mockUsers = JSON.parse(localStorage.getItem("ccns-mock-users-list") || "[]");
+      let mockUsers = safeParse(localStorage.getItem("ccns-mock-users-list"), []);
       mockUsers.push(newMockUser);
       localStorage.setItem("ccns-mock-users-list", JSON.stringify(mockUsers));
 
@@ -190,7 +193,7 @@ export const AuthProvider = ({ children }) => {
     if (localStorage.getItem("ccns-mock-active") === "true") {
       localStorage.setItem("ccns-mock-user", JSON.stringify(updatedUser));
       // Sync list
-      let mockUsers = JSON.parse(localStorage.getItem("ccns-mock-users-list") || "[]");
+      let mockUsers = safeParse(localStorage.getItem("ccns-mock-users-list"), []);
       const index = mockUsers.findIndex(u => u.id === user.id);
       if (index !== -1) {
         mockUsers[index].favorites = favorites;
@@ -226,7 +229,7 @@ export const AuthProvider = ({ children }) => {
     if (localStorage.getItem("ccns-mock-active") === "true") {
       localStorage.setItem("ccns-mock-user", JSON.stringify(updatedUser));
       // Sync list
-      let mockUsers = JSON.parse(localStorage.getItem("ccns-mock-users-list") || "[]");
+      let mockUsers = safeParse(localStorage.getItem("ccns-mock-users-list"), []);
       const index = mockUsers.findIndex(u => u.id === user.id);
       if (index !== -1) {
         mockUsers[index].history = updatedUser.history;
