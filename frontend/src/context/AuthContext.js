@@ -100,10 +100,16 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       }
     } catch (err) {
-      console.warn("Backend login failed, using fallback:", err.response?.data?.message || err.message);
+      console.warn("Backend login failed:", err.response?.data?.message || err.message);
       
-      // 2. Mock Fallback
-      // Let's check against mock database in local storage
+      // If backend responded with an error, return the actual error instead of falling back to mock
+      if (err.response && err.response.data && err.response.data.message) {
+        setLoading(false);
+        setError(err.response.data.message);
+        return { success: false, message: err.response.data.message };
+      }
+      
+      // 2. Mock Fallback (only if backend is offline/network error)
       let mockUsers = safeParse(localStorage.getItem("ccns-mock-users-list"), []);
       
       // Add default mock user to database list if it's empty
@@ -153,9 +159,16 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       }
     } catch (err) {
-      console.warn("Backend register failed, using fallback:", err.response?.data?.message || err.message);
+      console.warn("Backend register failed:", err.response?.data?.message || err.message);
 
-      // Create new mock user
+      // If backend responded with an error (e.g. duplicate user), return the actual error instead of falling back to mock
+      if (err.response && err.response.data && err.response.data.message) {
+        setLoading(false);
+        setError(err.response.data.message);
+        return { success: false, message: err.response.data.message };
+      }
+
+      // Create new mock user (only if backend is offline/network error)
       const newMockUser = {
         id: `mock-user-${Date.now()}`,
         name,
