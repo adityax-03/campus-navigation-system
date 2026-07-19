@@ -39,7 +39,8 @@ const Register = () => {
     try {
       const result = await register(name, registrationNo, email, password);
       if (result.success) {
-        navigate("/dashboard");
+        alert("Registration successful! Redirecting you to the sign-in page...");
+        navigate("/login");
       } else {
         setErrorMsg(result.message || "Failed to create account. Please try again.");
       }

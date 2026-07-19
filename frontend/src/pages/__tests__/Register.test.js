@@ -23,6 +23,14 @@ jest.mock("../../context/AuthContext", () => ({
 }));
 
 describe("Register Component Tests", () => {
+  beforeAll(() => {
+    jest.spyOn(window, "alert").mockImplementation(() => {});
+  });
+
+  afterAll(() => {
+    window.alert.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -106,7 +114,7 @@ describe("Register Component Tests", () => {
     
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith("Aditya Gupta", "2023CS45", "aditya@college.edu", "password123");
-      expect(mockNavigate).toHaveBeenCalledWith("/dashboard");
+      expect(mockNavigate).toHaveBeenCalledWith("/login");
     });
   });
 });

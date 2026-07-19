@@ -151,10 +151,6 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (res.data.success) {
-        const { token, user: loggedUser } = res.data;
-        localStorage.setItem("ccns-token", token);
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        setUser(loggedUser);
         setLoading(false);
         return { success: true };
       }
@@ -184,12 +180,6 @@ export const AuthProvider = ({ children }) => {
       mockUsers.push(newMockUser);
       localStorage.setItem("ccns-mock-users-list", JSON.stringify(mockUsers));
 
-      const loggedUser = { ...newMockUser };
-      delete loggedUser.password;
-
-      localStorage.setItem("ccns-mock-active", "true");
-      localStorage.setItem("ccns-mock-user", JSON.stringify(loggedUser));
-      setUser(loggedUser);
       setLoading(false);
       return { success: true };
     }

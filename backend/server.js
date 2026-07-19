@@ -69,7 +69,12 @@ const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,http:/
 app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || origin.includes("localhost") || origin.includes("127.0.0.1")) {
+    if (
+      allowedOrigins.includes(origin) || 
+      origin.includes("localhost") || 
+      origin.includes("127.0.0.1") ||
+      origin.endsWith(".onrender.com")
+    ) {
       return callback(null, true);
     } else {
       return callback(new Error("Not allowed by CORS"));
