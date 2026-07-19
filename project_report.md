@@ -16,19 +16,26 @@ Department of Computer Science and Engineering
 Lovely Professional University (LPU), Phagwara, Punjab  
 
 **SUBMITTED BY:**  
-* **Name:** Aditya Gupta  
-* **Registration Number:** 2023CS45  
+* **Aditya Gupta** (Registration Number: 12405441)  
+* **Sakshi Wadhwa** (Registration Number: 12405692)  
+* **Akhilesh Awadhane** (Registration Number: 12406932)  
+* **Harshit Sangam Shivvallary** (Registration Number: 12406144)  
 * **Program:** Bachelor of Technology in Computer Science & Engineering (B.Tech CSE)  
+
 
 **SUPERVISED BY:**  
 * **Faculty of Computer Science & Engineering**  
 * Lovely Professional University, Punjab, India  
 
+**DEPLOYMENT LINKS:**  
+* **Frontend Application:** https://campus-nav-frontend-075v.onrender.com  
+* **Backend REST API:** https://campus-nav-backend-327d.onrender.com  
+
 ---
 
 ## 2. ABSTRACT
 
-Navigation across massive university campuses is a significant challenge for new students, faculty members, visitors, and physically challenged individuals. Traditional mapping services lack details on pedestrian paths, stairs, ramps, and indoor transitions. The **College Campus Navigation System (CCNS) — LPU Edition** is a specialized web application developed to address these limitations. 
+Navigation across massive university campuses is a significant challenge for new students, faculty members, visitors, and physically challenged individuals. Traditional mapping services lack details on pedestrian paths, stairs, ramps, and indoor transitions. The **College Campus Navigation System (CCNS) — LPU Edition** is a specialized web application developed to address these limitations.
 
 CCNS leverages a hybrid architectural design:
 * A high-performance **C++ backend Pathfinder engine** dynamically compiles and executes path calculations for maximum speed.
@@ -50,7 +57,7 @@ This report documents the architectural design, database schemas, algorithm form
 ### 3.1 Background & Context
 With the expansion of modern universities into large multi-acre campuses, the physical scale of academic infrastructure has increased dramatically. Lovely Professional University (LPU) in Punjab is one of the largest single-campus universities in India, housing tens of thousands of students across dozens of academic blocks, student hostels, research facilities, and food courts.
 
-Navigating this environment efficiently is highly challenging. Freshmen and visitors struggle to find the quickest paths to classes, exam halls, and administrative offices. Furthermore, students with physical disabilities face significant barriers due to stairs and non-accessible walkways. 
+Navigating this environment efficiently is highly challenging. Freshmen and visitors struggle to find the quickest paths to classes, exam halls, and administrative offices. Furthermore, students with physical disabilities face significant barriers due to stairs and non-accessible walkways.
 
 General-purpose mapping platforms like Google Maps or Apple Maps do not capture the level of detail required for pedestrian-only walkways, indoor corridors, or ramp access. Hence, a dedicated campus navigation system is necessary to map the pedestrian network as a customized graph.
 
@@ -75,18 +82,30 @@ The project covers:
 ### 4.1 Hybrid Architecture
 The system employs a MERN (MongoDB, Express, React, Node) stack combined with a native C++ engine.
 
-```mermaid
-graph TD
-    A[React Client / Viewport] -->|API Call /api/routes/route| B(Node.js Express Backend)
-    B -->|Query DB| C[(MongoDB Atlas)]
-    B -->|Check Pathfinder Executable| D{C++ Binary Exists?}
-    D -->|Yes| E[Execute Child Process /cpp/pathfinder]
-    E -->|Fast JSON Stream| F[API Response to Client]
-    D -->|No/Compile Fail| G[Run Node.js JS Pathfinder Solver]
-    G -->|JS Result JSON| F
-    A -->|Network Offline| H[Client-Side JS Pathfinder Engine]
-    H -->|Render directly| I[SVG Map Marching Ants Animation]
-    F -->|Render| I
+```text
++-------------------------------------------------------------+
+|                     React Frontend Client                   |
++-------------------------------------------------------------+
+                               |
+                   HTTP /api/routes/route
+                               v
++-------------------------------------------------------------+
+|                  Node.js Express Backend                    |
++-------------------------------------------------------------+
+         |                                           |
+    Query DB                                Check Executable
+         v                                           v
++------------------+                       +------------------+
+|  MongoDB Atlas   |                       |  C++ Pathfinder  |
+|  (Nodes & Edges) |                       |  Binary Engine   |
++------------------+                       +------------------+
+                                                     |
+                                            Fallback if missing
+                                                     v
+                                           +------------------+
+                                           |   JavaScript     |
+                                           | Pathfinder Engine|
+                                           +------------------+
 ```
 
 ### 4.2 Data Models and Schema Design
@@ -249,7 +268,14 @@ void solveDijkstra(string start, string end, bool accessOnly) {
         curr = prev[curr];
     }
     reverse(path.begin(), path.end());
-    // ... Output JSON
+    
+    // Print JSON output
+    cout << "{\"success\":true,\"path\":[";
+    for (size_t i = 0; i < path.size(); i++) {
+        cout << "\"" << path[i] << "\"";
+        if (i < path.size() - 1) cout << ",";
+    }
+    cout << "],\"distance\":" << dist[end] << "}" << endl;
 }
 ```
 
@@ -486,6 +512,107 @@ const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 ```
 
+### 6.3 Local JS Pathfinder Fallback (`backend/utils/pathfinderFallback.js`)
+If the C++ executable fails, the backend switches to this JavaScript solver.
+
+```javascript
+const CAMPUS_EDGES = [
+  { from: "gate-1", to: "j-gate", distance: 50, time: 0.6, accessible: true },
+  { from: "j-gate", to: "block-1", distance: 60, time: 0.8, accessible: true },
+  { from: "j-gate", to: "block-2", distance: 100, time: 1.3, accessible: true },
+  { from: "block-1", to: "block-3", distance: 50, time: 0.7, accessible: true },
+  { from: "block-2", to: "block-6", distance: 60, time: 0.8, accessible: true },
+  { from: "block-3", to: "j-physio", distance: 40, time: 0.5, accessible: true },
+  { from: "block-6", to: "j-physio", distance: 50, time: 0.7, accessible: true },
+  { from: "j-physio", to: "block-4", distance: 70, time: 1.0, accessible: true },
+  { from: "j-physio", to: "block-8", distance: 80, time: 1.1, accessible: false }
+];
+
+const solveDijkstra = (startId, endId, accessibilityOnly = false) => {
+  const distances = {};
+  const previous = {};
+  const nodes = new Set();
+  const allNodes = new Set();
+
+  CAMPUS_EDGES.forEach(e => {
+    allNodes.add(e.from);
+    allNodes.add(e.to);
+  });
+
+  allNodes.forEach(id => {
+    distances[id] = id === startId ? 0 : Infinity;
+    previous[id] = null;
+    nodes.add(id);
+  });
+
+  if (!allNodes.has(startId) || !allNodes.has(endId)) {
+    return { success: false, message: "Nodes not found" };
+  }
+
+  while (nodes.size > 0) {
+    let smallest = null;
+    for (const node of nodes) {
+      if (smallest === null || distances[node] < distances[smallest]) {
+        smallest = node;
+      }
+    }
+
+    if (smallest === null || distances[smallest] === Infinity) break;
+    if (smallest === endId) break;
+
+    nodes.delete(smallest);
+
+    const neighbors = CAMPUS_EDGES.filter(edge => {
+      if (accessibilityOnly && !edge.accessible) return false;
+      return edge.from === smallest || edge.to === smallest;
+    }).map(edge => {
+      const neighbor = edge.from === smallest ? edge.to : edge.from;
+      return { id: neighbor, weight: edge.distance };
+    });
+
+    for (const neighbor of neighbors) {
+      if (!nodes.has(neighbor.id)) continue;
+      
+      const alt = distances[smallest] + neighbor.weight;
+      if (alt < distances[neighbor.id]) {
+        distances[neighbor.id] = alt;
+        previous[neighbor.id] = smallest;
+      }
+    }
+  }
+
+  const path = [];
+  let curr = endId;
+  while (curr !== null) {
+    path.unshift(curr);
+    curr = previous[curr];
+  }
+
+  if (path[0] !== startId) return { success: false, message: "Path not found" };
+
+  let totalDist = 0;
+  let totalTime = 0;
+  for (let i = 0; i < path.length - 1; i++) {
+    const edge = CAMPUS_EDGES.find(
+      e => (e.from === path[i] && e.to === path[i+1]) || (e.from === path[i+1] && e.to === path[i])
+    );
+    if (edge) {
+      totalDist += edge.distance;
+      totalTime += edge.time;
+    }
+  }
+
+  return {
+    success: true,
+    path,
+    distance: totalDist,
+    time: Math.round(totalTime)
+  };
+};
+
+module.exports = { solveDijkstra };
+```
+
 ---
 
 ## 7. RESULTS & COMPARATIVE ANALYSIS
@@ -500,25 +627,15 @@ The system was verified with three key routing scenarios representing campus wal
 * **Distance**: 110 meters
 * **Walk Time**: 1 minute
 
-#### Case Study 2: Accessibility rerouting (Bypassing steps)
+#### Case Study 2: Accessibility Rerouting (Bypassing Steps)
 * **Source**: `j-physio` (Physio Junction)
 * **Destination**: `block-8` (Fine Arts Block)
 * **Standard Path (Accessibility OFF)**: `["j-physio", "block-8"]` (80 meters, 1 min)
 * **Accessible Path (Accessibility ON)**: `["j-physio", "block-4", "block-7", "j-welfare", "block-13", "block-8"]` (270 meters, 4 min)
 * **Analysis**: When Accessibility is enabled, the path automatically bypasses the direct stairs path and routes through wheelchair-accessible ramped walkways.
 
-```mermaid
-graph LR
-    subgraph Standard Path (Stairs)
-        A(Physio Junction) -->|80m / Stairs| B(Block 8)
-    end
-    subgraph Accessible Path (Ramps)
-        C(Physio Junction) -->|70m| D(Block 4)
-        D -->|50m| E(Block 7)
-        E -->|40m| F(Welfare Junction)
-        F -->|50m| G(Block 13)
-        G -->|60m| H(Block 8)
-    end
+```text
+Physio Junction -----> Block 4 -----> Block 7 -----> Welfare Junction -----> Block 13 -----> Block 8
 ```
 
 #### Case Study 3: Alternate Route Discovery (DFS vs Dijkstra)
@@ -533,7 +650,7 @@ graph LR
 ### 7.2 Core Performance Benchmarks
 We measured the calculation speed of the compiled C++ engine compared to the JavaScript solver across 1,000 requests.
 
-| Pathfinder Engine | Average Computation Time ($\mu s$) | CPU Utilization | Memory footprint |
+| Pathfinder Engine | Average Computation Time ($\mu s$) | CPU Utilization | Memory Footprint |
 | :--- | :--- | :--- | :--- |
 | **Native C++ Engine** | **$135 \mu s$** | $< 1\%$ | $\approx 2.4 \text{ MB}$ |
 | **JavaScript Engine** | **$880 \mu s$** | $\approx 3.2\%$ | $\approx 18.5 \text{ MB}$ |
@@ -545,7 +662,7 @@ The native C++ compiled binary is **6.5 times faster** and has a significantly s
 ## 8. CONCLUSION & FUTURE SCOPE
 
 ### 8.1 Key Accomplishments
-The **College Campus Navigation System (CCNS)** successfully models large-scale campus walkway networks to calculate routing paths. 
+The **College Campus Navigation System (CCNS)** successfully models large-scale campus walkway networks to calculate routing paths.
 * It combines a fast C++ pathfinding backend with a responsive React frontend interface.
 * The system handles accessibility requirements by dynamically filtering out stairways to find ramped alternatives.
 * It provides an offline fallback to ensure the application remains functional even if the backend server is down.
