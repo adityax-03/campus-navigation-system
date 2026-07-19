@@ -22,7 +22,6 @@ Lovely Professional University (LPU), Phagwara, Punjab
 * **Harshit Sangam Shivvallary** (Registration Number: 12406144)  
 * **Program:** Bachelor of Technology in Computer Science & Engineering (B.Tech CSE)  
 
-
 **SUPERVISED BY:**  
 * **Faculty of Computer Science & Engineering**  
 * Lovely Professional University, Punjab, India  
@@ -48,7 +47,7 @@ The application models the campus of Lovely Professional University (LPU) as a m
 
 A key feature of the system is the **Accessibility Mode**, which dynamically filters out walkways with stairs, routing users through wheelchair-accessible ramped paths. Real-time conditions are simulated using traffic and crowd view overlays on an interactive, custom SVG vector map that supports panning, zooming, and smooth path animations. Comprehensive unit tests validate the system.
 
-This report documents the architectural design, database schemas, algorithm formulations, complexity analyses, and test results of the CCNS project.
+This report documents the architectural design, database schemas, algorithm formulations, complexity analyses, source code implementation, and test results of the CCNS project.
 
 ---
 
@@ -115,36 +114,13 @@ The database uses Mongoose schemas to represent the graph components.
 The `Node` represents any physical location on the LPU campus.
 ```javascript
 const nodeSchema = new mongoose.Schema({
-  id: { 
-    type: String, 
-    required: true, 
-    unique: true, 
-    index: true 
-  },
-  name: { 
-    type: String, 
-    required: true 
-  },
-  x: { 
-    type: Number, 
-    required: true 
-  }, // SVG Canvas X Coordinate
-  y: { 
-    type: Number, 
-    required: true 
-  }, // SVG Canvas Y Coordinate
-  type: { 
-    type: String, 
-    enum: ['academic', 'hostel', 'library', 'sports', 'gate', 'junction', 'cafeteria'], 
-    required: true 
-  },
-  desc: { 
-    type: String 
-  },
-  isPOI: { 
-    type: Boolean, 
-    default: true 
-  }
+  id: { type: String, required: true, unique: true, index: true },
+  name: { type: String, required: true },
+  x: { type: Number, required: true },
+  y: { type: Number, required: true },
+  type: { type: String, enum: ['academic', 'hostel', 'library', 'sports', 'gate', 'junction', 'cafeteria'], required: true },
+  desc: { type: String },
+  isPOI: { type: Boolean, default: true }
 });
 ```
 
@@ -152,48 +128,11 @@ const nodeSchema = new mongoose.Schema({
 The `Edge` represents a walkway connecting two locations.
 ```javascript
 const edgeSchema = new mongoose.Schema({
-  from: { 
-    type: String, 
-    required: true, 
-    index: true 
-  },
-  to: { 
-    type: String, 
-    required: true, 
-    index: true 
-  },
-  distance: { 
-    type: Number, 
-    required: true 
-  }, // Distance in meters
-  time: { 
-    type: Number, 
-    required: true 
-  },     // Walk time in minutes
-  accessible: { 
-    type: Boolean, 
-    default: true 
-  } // false if path contains stairs
-});
-```
-
-#### 4.2.3 User Model
-Stores user details, favorites, and navigation history.
-```javascript
-const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  registrationNo: { type: String, required: true, unique: true, uppercase: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  password: { type: String, required: true },
-  role: { type: String, default: 'Student' },
-  favorites: [{ type: String }],
-  history: [{
-    from: { type: String, required: true },
-    to: { type: String, required: true },
-    distance: { type: String },
-    time: { type: String },
-    date: { type: Date, default: Date.now }
-  }]
+  from: { type: String, required: true, index: true },
+  to: { type: String, required: true, index: true },
+  distance: { type: Number, required: true },
+  time: { type: Number, required: true },
+  accessible: { type: Boolean, default: true }
 });
 ```
 
@@ -220,10 +159,210 @@ $$u = \arg\min_{v \in V \setminus S} D[v]$$
 where $S$ is the set of visited vertices. For each neighbor $v$ of $u$, we perform relaxation:
 $$\text{if } D[u] + w(u, v) < D[v] \text{ then } D[v] = D[u] + w(u, v)$$
 
-#### 5.2.2 C++ Implementation Details
-We implement Dijkstra's algorithm using a min-priority queue (`std::priority_queue`) to store pairs of `(distance, node_id)`.
+---
+
+### 5.3 Breadth-First Search (BFS)
+BFS is used to find the path with the fewest intersection transitions (hops), treating all edges as having equal weight.
+
+#### 5.3.1 Mathematical Formulation
+BFS utilizes a FIFO queue $Q$ to explore the vertices level by level. It starts at the source node $s$, marks it as visited, and pushes it to $Q$.
+$$\text{For each vertex } u \text{ popped from } Q, \text{ we inspect all its neighbors } v.$$
+If neighbor $v$ is not visited, we mark it as visited, record its parent as $u$, and push it to $Q$. The first time target node $t$ is reached, the path is guaranteed to have the minimum number of edge hops.
+
+---
+
+### 5.4 Depth-First Search (DFS)
+DFS is used to explore different branches of the graph. In CCNS, we search recursively to find all possible paths from source to target, sort them by hop count, and select the second-shortest path to display as an alternative route.
+
+---
+
+## 6. SOURCE CODE LISTINGS & DETAILED ANALYSIS
+
+In this section, we present the complete source code files for the core components of the application.
+
+### 6.1 Native C++ Pathfinder Engine (`backend/cpp/pathfinder.cpp`)
+This file is compiled into a native binary to run the pathfinding calculations.
 
 ```cpp
+#include <iostream>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+#include <algorithm>
+#include <climits>
+
+using namespace std;
+
+// Graph Edge definition
+struct Edge {
+    string to;
+    int distance; // meters
+    double time;  // minutes
+    bool accessible;
+};
+
+// Graph representation
+unordered_map<string, vector<Edge>> graph;
+
+void initGraph() {
+    // Add LPU edges
+    graph["gate-1"].push_back({"j-gate", 50, 0.6, true});
+    graph["j-gate"].push_back({"gate-1", 50, 0.6, true});
+    
+    graph["j-gate"].push_back({"block-1", 60, 0.8, true});
+    graph["block-1"].push_back({"j-gate", 60, 0.8, true});
+    
+    graph["j-gate"].push_back({"block-2", 100, 1.3, true});
+    graph["block-2"].push_back({"j-gate", 100, 1.3, true});
+    
+    graph["block-1"].push_back({"block-3", 50, 0.7, true});
+    graph["block-3"].push_back({"block-1", 50, 0.7, true});
+    
+    graph["block-2"].push_back({"block-6", 60, 0.8, true});
+    graph["block-6"].push_back({"block-2", 60, 0.8, true});
+    
+    graph["block-3"].push_back({"j-physio", 40, 0.5, true});
+    graph["j-physio"].push_back({"block-3", 40, 0.5, true});
+    
+    graph["block-6"].push_back({"j-physio", 50, 0.7, true});
+    graph["j-physio"].push_back({"block-6", 50, 0.7, true});
+    
+    graph["j-physio"].push_back({"block-4", 70, 1.0, true});
+    graph["block-4"].push_back({"j-physio", 70, 1.0, true});
+    
+    graph["j-physio"].push_back({"block-8", 80, 1.1, false}); // Has steps!
+    graph["block-8"].push_back({"j-physio", 80, 1.1, false});
+    
+    graph["block-4"].push_back({"block-7", 50, 0.7, true});
+    graph["block-7"].push_back({"block-4", 50, 0.7, true});
+    
+    graph["block-8"].push_back({"block-13", 60, 0.8, true});
+    graph["block-13"].push_back({"block-8", 60, 0.8, true});
+    
+    graph["block-7"].push_back({"j-welfare", 40, 0.5, true});
+    graph["j-welfare"].push_back({"block-7", 40, 0.5, true});
+    
+    graph["block-13"].push_back({"j-welfare", 50, 0.7, true});
+    graph["j-welfare"].push_back({"block-13", 50, 0.7, true});
+    
+    graph["j-welfare"].push_back({"gh-9-12", 60, 0.8, true});
+    graph["gh-9-12"].push_back({"j-welfare", 60, 0.8, true});
+    
+    graph["j-welfare"].push_back({"block-15", 90, 1.2, true});
+    graph["block-15"].push_back({"j-welfare", 90, 1.2, true});
+    
+    graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
+    graph["j-hotel"].push_back({"block-15", 30, 0.4, true});
+    
+    graph["j-hotel"].push_back({"block-18", 70, 1.0, true});
+    graph["block-18"].push_back({"j-hotel", 70, 1.0, true});
+    
+    graph["block-18"].push_back({"gh-21", 60, 0.8, true});
+    graph["gh-21"].push_back({"block-18", 60, 0.8, true});
+    
+    graph["block-18"].push_back({"block-19", 50, 0.7, true});
+    graph["block-19"].push_back({"block-18", 50, 0.7, true});
+    
+    graph["block-19"].push_back({"block-20", 50, 0.7, true});
+    graph["block-20"].push_back({"block-19", 50, 0.7, true});
+    
+    graph["block-20"].push_back({"j-welfare", 110, 1.5, true});
+    graph["j-welfare"].push_back({"block-20", 110, 1.5, true});
+    
+    graph["j-hotel"].push_back({"j-plaza-south", 120, 1.6, true});
+    graph["j-plaza-south"].push_back({"j-hotel", 120, 1.6, true});
+    
+    graph["j-plaza-south"].push_back({"block-29", 40, 0.5, true});
+    graph["block-29"].push_back({"j-plaza-south", 40, 0.5, true});
+    
+    graph["j-plaza-south"].push_back({"block-32", 40, 0.5, true});
+    graph["block-32"].push_back({"j-plaza-south", 40, 0.5, true});
+    
+    graph["block-29"].push_back({"block-30", 50, 0.7, true});
+    graph["block-30"].push_back({"block-29", 50, 0.7, true});
+    
+    graph["block-30"].push_back({"block-31", 40, 0.5, true});
+    graph["block-31"].push_back({"block-30", 40, 0.5, true});
+    
+    graph["block-32"].push_back({"j-science-branch", 30, 0.4, true});
+    graph["j-science-branch"].push_back({"block-32", 30, 0.4, true});
+    
+    graph["j-science-branch"].push_back({"block-25-26", 100, 1.3, true});
+    graph["block-25-26"].push_back({"j-science-branch", 100, 1.3, true});
+    
+    graph["block-25-26"].push_back({"block-27", 50, 0.7, true});
+    graph["block-27"].push_back({"block-25-26", 50, 0.7, true});
+    
+    graph["block-27"].push_back({"block-28", 50, 0.7, true});
+    graph["block-28"].push_back({"block-27", 50, 0.7, true});
+    
+    graph["block-29"].push_back({"block-33", 60, 0.8, true});
+    graph["block-33"].push_back({"block-29", 60, 0.8, true});
+    
+    graph["block-33"].push_back({"block-34", 40, 0.5, true});
+    graph["block-34"].push_back({"block-33", 40, 0.5, true});
+    
+    graph["block-34"].push_back({"block-35", 40, 0.5, true});
+    graph["block-35"].push_back({"block-34", 40, 0.5, true});
+    
+    graph["block-35"].push_back({"block-36", 50, 0.7, true});
+    graph["block-36"].push_back({"block-35", 50, 0.7, true});
+    
+    graph["block-36"].push_back({"block-37", 40, 0.5, true});
+    graph["block-37"].push_back({"block-36", 40, 0.5, true});
+    
+    graph["block-37"].push_back({"block-38", 40, 0.5, true});
+    graph["block-38"].push_back({"block-37", 40, 0.5, true});
+    
+    graph["block-38"].push_back({"block-31", 50, 0.7, true});
+    graph["block-31"].push_back({"block-38", 50, 0.7, true});
+    
+    graph["block-33"].push_back({"j-plaza-inner", 30, 0.4, true});
+    graph["j-plaza-inner"].push_back({"block-33", 30, 0.4, true});
+    
+    graph["block-37"].push_back({"j-plaza-inner", 30, 0.4, true});
+    graph["j-plaza-inner"].push_back({"block-37", 30, 0.4, true});
+    
+    graph["j-plaza-inner"].push_back({"j-top-road", 80, 1.1, true});
+    graph["j-top-road"].push_back({"j-plaza-inner", 80, 1.1, true});
+    
+    graph["j-top-road"].push_back({"apartments-41-44", 40, 0.5, true});
+    graph["apartments-41-44"].push_back({"j-top-road", 40, 0.5, true});
+    
+    graph["j-top-road"].push_back({"block-47", 30, 0.4, true});
+    graph["block-47"].push_back({"j-top-road", 30, 0.4, true});
+    
+    graph["j-top-road"].push_back({"bh-45", 60, 0.8, true});
+    graph["bh-45"].push_back({"j-top-road", 60, 0.8, true});
+    
+    graph["block-47"].push_back({"bh-48-50", 100, 1.3, true});
+    graph["bh-48-50"].push_back({"block-47", 100, 1.3, true});
+    
+    graph["bh-48-50"].push_back({"bh-51-53", 70, 1.0, true});
+    graph["bh-51-53"].push_back({"bh-48-50", 70, 1.0, true});
+    
+    graph["bh-51-53"].push_back({"sports-ground", 80, 1.1, true});
+    graph["sports-ground"].push_back({"bh-51-53", 80, 1.1, true});
+    
+    graph["sports-ground"].push_back({"j-sports-road", 40, 0.5, true});
+    graph["j-sports-road"].push_back({"sports-ground", 40, 0.5, true});
+    
+    graph["j-sports-road"].push_back({"block-56", 110, 1.5, true});
+    graph["block-56"].push_back({"j-sports-road", 110, 1.5, true});
+    
+    graph["block-56"].push_back({"block-57", 40, 0.5, true});
+    graph["block-57"].push_back({"block-56", 40, 0.5, true});
+    
+    graph["block-57"].push_back({"block-58", 30, 0.4, true});
+    graph["block-58"].push_back({"block-57", 30, 0.4, true});
+    
+    graph["j-sports-road"].push_back({"block-15", 180, 2.4, true});
+    graph["block-15"].push_back({"j-sports-road", 180, 2.4, true});
+}
+
+// Dijkstra Solver
 void solveDijkstra(string start, string end, bool accessOnly) {
     unordered_map<string, int> dist;
     unordered_map<string, string> prev;
@@ -260,7 +399,6 @@ void solveDijkstra(string start, string end, bool accessOnly) {
         return;
     }
     
-    // Reconstruct and print path in JSON format
     vector<string> path;
     string curr = end;
     while (curr != "") {
@@ -269,28 +407,25 @@ void solveDijkstra(string start, string end, bool accessOnly) {
     }
     reverse(path.begin(), path.end());
     
-    // Print JSON output
+    double totalTime = 0.0;
+    for (size_t i = 0; i < path.size() - 1; i++) {
+        for (auto const& edge : graph[path[i]]) {
+            if (edge.to == path[i+1]) {
+                totalTime += edge.time;
+                break;
+            }
+        }
+    }
+    
     cout << "{\"success\":true,\"path\":[";
     for (size_t i = 0; i < path.size(); i++) {
         cout << "\"" << path[i] << "\"";
         if (i < path.size() - 1) cout << ",";
     }
-    cout << "],\"distance\":" << dist[end] << "}" << endl;
+    cout << "],\"distance\":" << dist[end] << ",\"time\":" << (int)(totalTime + 0.5) << "}" << endl;
 }
-```
 
----
-
-### 5.3 Breadth-First Search (BFS)
-BFS is used to find the path with the fewest intersection transitions (hops), treating all edges as having equal weight.
-
-#### 5.3.1 Mathematical Formulation
-BFS utilizes a FIFO queue $Q$ to explore the vertices level by level. It starts at the source node $s$, marks it as visited, and pushes it to $Q$.
-$$\text{For each vertex } u \text{ popped from } Q, \text{ we inspect all its neighbors } v.$$
-If neighbor $v$ is not visited, we mark it as visited, record its parent as $u$, and push it to $Q$. The first time target node $t$ is reached, the path is guaranteed to have the minimum number of edge hops.
-
-#### 5.3.2 C++ Implementation Details
-```cpp
+// BFS Solver
 void solveBFS(string start, string end, bool accessOnly) {
     queue<vector<string>> q;
     unordered_set<string> visited;
@@ -305,8 +440,24 @@ void solveBFS(string start, string end, bool accessOnly) {
         string u = path.back();
         
         if (u == end) {
-            // Reconstruct path distance and time stats
-            // Output JSON
+            int totalDist = 0;
+            double totalTime = 0.0;
+            for (size_t i = 0; i < path.size() - 1; i++) {
+                for (auto const& edge : graph[path[i]]) {
+                    if (edge.to == path[i+1]) {
+                        totalDist += edge.distance;
+                        totalTime += edge.time;
+                        break;
+                    }
+                }
+            }
+            
+            cout << "{\"success\":true,\"path\":[";
+            for (size_t i = 0; i < path.size(); i++) {
+                cout << "\"" << path[i] << "\"";
+                if (i < path.size() - 1) cout << ",";
+            }
+            cout << "],\"distance\":" << totalDist << ",\"time\":" << (int)(totalTime + 0.5) << "}" << endl;
             return;
         }
         
@@ -323,17 +474,8 @@ void solveBFS(string start, string end, bool accessOnly) {
     }
     cout << "{\"success\":false,\"message\":\"Path not found\"}" << endl;
 }
-```
 
----
-
-### 5.4 Depth-First Search (DFS)
-DFS is used to explore different branches of the graph. In CCNS, we search recursively to find all possible paths from source to target, sort them by hop count, and select the second-shortest path to display as an alternative route.
-
-#### 5.4.1 C++ Implementation Details
-```cpp
 vector<vector<string>> allDfsPaths;
-
 void dfsHelper(string u, string end, bool accessOnly, unordered_set<string>& visited, vector<string>& path) {
     if (u == end) {
         allDfsPaths.push_back(path);
@@ -352,91 +494,53 @@ void dfsHelper(string u, string end, bool accessOnly, unordered_set<string>& vis
         }
     }
 }
-```
 
----
-
-## 6. SOURCE CODE LISTINGS & DETAILED ANALYSIS
-
-### 6.1 Native C++ Pathfinder Engine (`backend/cpp/pathfinder.cpp`)
-This file is compiled into a native binary to run the pathfinding calculations.
-
-```cpp
-#include <iostream>
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
-#include <queue>
-#include <algorithm>
-#include <climits>
-
-using namespace std;
-
-struct Edge {
-    string to;
-    int distance;
-    double time;
-    bool accessible;
-};
-
-unordered_map<string, vector<Edge>> graph;
-
-void initGraph() {
-    graph["gate-1"].push_back({"j-gate", 50, 0.6, true});
-    graph["j-gate"].push_back({"gate-1", 50, 0.6, true});
+// DFS Solver
+void solveDFS(string start, string end, bool accessOnly) {
+    unordered_set<string> visited;
+    vector<string> path;
     
-    graph["j-gate"].push_back({"block-1", 60, 0.8, true});
-    graph["block-1"].push_back({"j-gate", 60, 0.8, true});
+    visited.insert(start);
+    path.push_back(start);
+    dfsHelper(start, end, accessOnly, visited, path);
     
-    graph["j-gate"].push_back({"block-2", 100, 1.3, true});
-    graph["block-2"].push_back({"j-gate", 100, 1.3, true});
+    if (allDfsPaths.empty()) {
+        cout << "{\"success\":false,\"message\":\"Path not found\"}" << endl;
+        return;
+    }
     
-    graph["block-1"].push_back({"block-3", 50, 0.7, true});
-    graph["block-3"].push_back({"block-1", 50, 0.7, true});
+    sort(allDfsPaths.begin(), allDfsPaths.end(), [](const vector<string>& a, const vector<string>& b) {
+        return a.size() < b.size();
+    });
     
-    graph["block-2"].push_back({"block-6", 60, 0.8, true});
-    graph["block-6"].push_back({"block-2", 60, 0.8, true});
+    vector<string> selectedPath = allDfsPaths.size() > 1 ? allDfsPaths[1] : allDfsPaths[0];
     
-    graph["block-3"].push_back({"j-physio", 40, 0.5, true});
-    graph["j-physio"].push_back({"block-3", 40, 0.5, true});
+    int totalDist = 0;
+    double totalTime = 0.0;
+    for (size_t i = 0; i < selectedPath.size() - 1; i++) {
+        for (auto const& edge : graph[selectedPath[i]]) {
+            if (edge.to == selectedPath[i+1]) {
+                totalDist += edge.distance;
+                totalTime += edge.time;
+                break;
+            }
+        }
+    }
     
-    graph["block-6"].push_back({"j-physio", 50, 0.7, true});
-    graph["j-physio"].push_back({"block-6", 50, 0.7, true});
-    
-    graph["j-physio"].push_back({"block-4", 70, 1.0, true});
-    graph["block-4"].push_back({"j-physio", 70, 1.0, true});
-    
-    graph["j-physio"].push_back({"block-8", 80, 1.1, false}); // Stairs!
-    graph["block-8"].push_back({"j-physio", 80, 1.1, false});
-    
-    graph["block-4"].push_back({"block-7", 50, 0.7, true});
-    graph["block-7"].push_back({"block-4", 50, 0.7, true});
-    
-    graph["block-8"].push_back({"block-13", 60, 0.8, true});
-    graph["block-13"].push_back({"block-8", 60, 0.8, true});
-    
-    graph["block-7"].push_back({"j-welfare", 40, 0.5, true});
-    graph["j-welfare"].push_back({"block-7", 40, 0.5, true});
-    
-    graph["block-13"].push_back({"j-welfare", 50, 0.7, true});
-    graph["j-welfare"].push_back({"block-13", 50, 0.7, true});
-    
-    graph["j-welfare"].push_back({"block-15", 90, 1.2, true});
-    graph["block-15"].push_back({"j-welfare", 90, 1.2, true});
-    
-    graph["block-15"].push_back({"j-hotel", 30, 0.4, true});
-    graph["j-hotel"].push_back({"block-15", 30, 0.4, true});
-    
-    graph["j-hotel"].push_back({"block-29", 160, 2.1, true});
-    graph["block-29"].push_back({"j-hotel", 160, 2.1, true});
+    cout << "{\"success\":true,\"path\":[";
+    for (size_t i = 0; i < selectedPath.size(); i++) {
+        cout << "\"" << selectedPath[i] << "\"";
+        if (i < selectedPath.size() - 1) cout << ",";
+    }
+    cout << "],\"distance\":" << totalDist << ",\"time\":" << (int)(totalTime + 0.5) << "}" << endl;
 }
 
 int main(int argc, char* argv[]) {
     if (argc < 4) {
-        cout << "{\"success\":false,\"message\":\"Usage: ./pathfinder [algo] [start] [end] [access]\"}" << endl;
+        cout << "{\"success\":false,\"message\":\"Missing arguments. Usage: ./pathfinder [algo] [start] [end] [access_flag: 0/1]\"}" << endl;
         return 1;
     }
+    
     string algo = argv[1];
     string start = argv[2];
     string end = argv[3];
@@ -445,7 +549,7 @@ int main(int argc, char* argv[]) {
     initGraph();
     
     if (graph.find(start) == graph.end() || graph.find(end) == graph.end()) {
-        cout << "{\"success\":false,\"message\":\"Locations not found in map data\"}" << endl;
+        cout << "{\"success\":false,\"message\":\"Start or end node not found in map data\"}" << endl;
         return 1;
     }
     
@@ -453,12 +557,18 @@ int main(int argc, char* argv[]) {
         solveDijkstra(start, end, accessOnly);
     } else if (algo == "bfs") {
         solveBFS(start, end, accessOnly);
+    } else if (algo == "dfs") {
+        solveDFS(start, end, accessOnly);
     } else {
-        cout << "{\"success\":false,\"message\":\"Invalid algorithm choice\"}" << endl;
+        cout << "{\"success\":false,\"message\":\"Unknown algorithm. Choose dijkstra, bfs, or dfs\"}" << endl;
+        return 1;
     }
+    
     return 0;
 }
 ```
+
+---
 
 ### 6.2 Node.js Express Server Setup (`backend/server.js`)
 Handles client requests and manages the C++ child process execution.
@@ -468,49 +578,253 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const path = require("path");
+const rateLimit = require("express-rate-limit");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const { exec } = require("child_process");
 const fs = require("fs");
 
 require("dotenv").config();
 
-const app = express();
-const binaryPath = path.join(__dirname, "cpp", "pathfinder");
+const connectDB = require("./config/db");
+const mongoSanitize = require("./middleware/sanitize");
+const errorHandler = require("./middleware/errorHandler");
+const authMiddleware = require("./middleware/authMiddleware");
 
-app.use(helmet());
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
+const User = require("./models/User");
+const jsPathfinder = require("./utils/pathfinderFallback");
 
-// API Endpoint for routing
-app.get("/api/routes/route", (req, res) => {
-  const { from, to, algo = "dijkstra", accessibility = "0" } = req.query;
-
-  if (!from || !to) {
-    return res.status(400).json({ success: false, message: "Missing endpoints" });
+// Startup Validation
+const requiredEnv = ["MONGO_URI", "JWT_SECRET"];
+for (const key of requiredEnv) {
+  if (!process.env[key]) {
+    console.error(`FATAL: Missing required environment variable: ${key}`);
+    process.exit(1);
   }
+}
 
-  const accessFlag = accessibility === "true" || accessibility === "1" ? "1" : "0";
+const app = express();
 
-  if (fs.existsSync(binaryPath)) {
-    const command = `"${binaryPath}" "${algo}" "${from}" "${to}" "${accessFlag}"`;
-    exec(command, (err, stdout, stderr) => {
-      if (err) {
-        return res.status(500).json({ success: false, message: "Engine execution error" });
-      }
+// Auto Compile C++ Pathfinder
+const cppPath = path.join(__dirname, "cpp", "pathfinder.cpp");
+const binaryName = process.platform === "win32" ? "pathfinder.exe" : "pathfinder";
+const binaryPath = path.join(__dirname, "cpp", binaryName);
+
+console.log("Checking C++ source code at:", cppPath);
+if (fs.existsSync(cppPath)) {
+  console.log("Compiling C++ pathfinder...");
+  const compileCmd = `g++ -O3 -std=c++17 "${cppPath}" -o "${binaryPath}"`;
+  exec(compileCmd, (err, stdout, stderr) => {
+    if (err) {
+      console.warn("WARNING: C++ Compilation failed. Falling back to JS Pathfinder Engine:", stderr || err.message);
+    } else {
+      console.log("C++ pathfinder compiled successfully at:", binaryPath);
       try {
-        const result = JSON.parse(stdout.trim());
-        res.json(result);
-      } catch (parseErr) {
-        res.status(500).json({ success: false, message: "Data parsing error" });
+        fs.chmodSync(binaryPath, "755");
+      } catch (chmodErr) {
+        console.warn("Chmod warning:", chmodErr.message);
+      }
+    }
+  });
+}
+
+// Security Middleware
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false
+}));
+
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000,http://localhost:5173")
+  .split(",")
+  .map(o => o.trim());
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (
+      allowedOrigins.includes(origin) || 
+      origin.includes("localhost") || 
+      origin.includes("127.0.0.1") ||
+      origin.endsWith(".onrender.com")
+    ) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+app.use(mongoSanitize);
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { success: false, message: "Too many requests. Please try again later." }
+});
+app.use("/api", globalLimiter);
+
+// Connect Database
+connectDB();
+
+// Express Routes
+app.post("/api/auth/register", async (req, res, next) => {
+  try {
+    const { name, registrationNo, email, password } = req.body;
+    if (!name || !registrationNo || !email || !password) {
+      return res.status(400).json({ success: false, message: "Please fill in all fields" });
+    }
+
+    const normEmail = email.toLowerCase().trim();
+    const normRegNo = registrationNo.toUpperCase().trim();
+
+    const existingEmail = await User.findOne({ email: normEmail });
+    if (existingEmail) {
+      return res.status(400).json({ success: false, message: "Email address already registered" });
+    }
+
+    const existingRegNo = await User.findOne({ registrationNo: normRegNo });
+    if (existingRegNo) {
+      return res.status(400).json({ success: false, message: "Registration number already registered" });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+
+    const newUser = new User({
+      name: name.trim(),
+      registrationNo: normRegNo,
+      email: normEmail,
+      password: hashedPassword
+    });
+
+    await newUser.save();
+
+    const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully",
+      token,
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        registrationNo: newUser.registrationNo,
+        role: newUser.role,
+        favorites: newUser.favorites,
+        history: newUser.history
       }
     });
-  } else {
-    res.status(500).json({ success: false, message: "Pathfinder binary not compiled" });
+  } catch (error) {
+    next(error);
   }
 });
+
+app.post("/api/auth/login", async (req, res, next) => {
+  try {
+    const { email, registrationNo, password } = req.body;
+    if ((!email && !registrationNo) || !password) {
+      return res.status(400).json({ success: false, message: "Please provide credentials" });
+    }
+
+    const query = {};
+    if (email) query.email = email.toLowerCase().trim();
+    else if (registrationNo) query.registrationNo = registrationNo.toUpperCase().trim();
+
+    const user = await User.findOne(query);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
+
+    res.json({
+      success: true,
+      message: "Welcome back!",
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        registrationNo: user.registrationNo,
+        role: user.role,
+        favorites: user.favorites,
+        history: user.history
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/routes/route", async (req, res, next) => {
+  try {
+    const { from, to, algo = "dijkstra", accessibility = "0" } = req.query;
+
+    if (!from || !to) {
+      return res.status(400).json({ success: false, message: "From and To nodes are required" });
+    }
+
+    const accessFlag = accessibility === "true" || accessibility === "1" ? "1" : "0";
+
+    if (fs.existsSync(binaryPath)) {
+      const command = `"${binaryPath}" "${algo}" "${from}" "${to}" "${accessFlag}"`;
+      
+      exec(command, (err, stdout, stderr) => {
+        if (err) {
+          return runJSSolver(algo, from, to, accessFlag === "1", res);
+        }
+        try {
+          const result = JSON.parse(stdout.trim());
+          res.json(result);
+        } catch (parseErr) {
+          return runJSSolver(algo, from, to, accessFlag === "1", res);
+        }
+      });
+    } else {
+      return runJSSolver(algo, from, to, accessFlag === "1", res);
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+function runJSSolver(algo, from, to, accessOnly, res) {
+  let result;
+  if (algo === "dijkstra") {
+    result = jsPathfinder.solveDijkstra(from, to, accessOnly);
+  } else if (algo === "bfs") {
+    result = jsPathfinder.solveBFS(from, to, accessOnly);
+  } else if (algo === "dfs") {
+    result = jsPathfinder.solveDFS(from, to, accessOnly);
+  } else {
+    return res.status(400).json({ success: false, message: "Invalid algorithm" });
+  }
+  
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(404).json(result);
+  }
+}
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 ```
+
+---
 
 ### 6.3 Local JS Pathfinder Fallback (`backend/utils/pathfinderFallback.js`)
 If the C++ executable fails, the backend switches to this JavaScript solver.
@@ -525,7 +839,15 @@ const CAMPUS_EDGES = [
   { from: "block-3", to: "j-physio", distance: 40, time: 0.5, accessible: true },
   { from: "block-6", to: "j-physio", distance: 50, time: 0.7, accessible: true },
   { from: "j-physio", to: "block-4", distance: 70, time: 1.0, accessible: true },
-  { from: "j-physio", to: "block-8", distance: 80, time: 1.1, accessible: false }
+  { from: "j-physio", to: "block-8", distance: 80, time: 1.1, accessible: false }, // Has steps!
+  { from: "block-4", to: "block-7", distance: 50, time: 0.7, accessible: true },
+  { from: "block-8", to: "block-13", distance: 60, time: 0.8, accessible: true },
+  { from: "block-7", to: "j-welfare", distance: 40, time: 0.5, accessible: true },
+  { from: "block-13", to: "j-welfare", distance: 50, time: 0.7, accessible: true },
+  { from: "j-welfare", to: "gh-9-12", distance: 60, time: 0.8, accessible: true },
+  { from: "j-welfare", to: "block-15", distance: 90, time: 1.2, accessible: true },
+  { from: "block-15", to: "j-hotel", distance: 30, time: 0.4, accessible: true },
+  { from: "j-hotel", to: "block-18", distance: 70, time: 1.0, accessible: true }
 ];
 
 const solveDijkstra = (startId, endId, accessibilityOnly = false) => {
@@ -615,6 +937,151 @@ module.exports = { solveDijkstra };
 
 ---
 
+### 6.4 React Interactive Map Component (`frontend/src/components/MapView.js`)
+Renders the canvas map, handles click interactions, pan/zoom, and route highlighting.
+
+```javascript
+import React, { useState } from "react";
+import { CAMPUS_NODES, CAMPUS_EDGES } from "../services/mapData";
+
+const MapView = ({
+  selectedFrom,
+  selectedTo,
+  setSelectedFrom,
+  setSelectedTo,
+  routePath,
+  accessibility,
+  setAccessibility,
+  trafficView,
+  setTrafficView,
+  crowdView,
+  setCrowdView
+}) => {
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [hoveredNode, setHoveredNode] = useState(null);
+
+  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.15, 2.5));
+  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.15, 0.7));
+  const handleResetZoom = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.target.tagName === "svg" || e.target.id === "map-bg") {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setPan({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleNodeClick = (nodeId) => {
+    if (!selectedFrom) {
+      setSelectedFrom(nodeId);
+    } else if (!selectedTo && nodeId !== selectedFrom) {
+      setSelectedTo(nodeId);
+    } else {
+      setSelectedFrom(nodeId);
+      setSelectedTo("");
+    }
+  };
+
+  const getPathD = () => {
+    if (!routePath || routePath.length < 2) return "";
+    return routePath
+      .map((id, index) => {
+        const node = CAMPUS_NODES[id];
+        if (!node) return "";
+        return `${index === 0 ? "M" : "L"} ${node.x} ${node.y}`;
+      })
+      .join(" ");
+  };
+
+  return (
+    <div 
+      className="map-panel"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      style={{ cursor: isDragging ? "grabbing" : "grab" }}
+    >
+      <div className="map-zoom-controls">
+        <button onClick={handleZoomIn}>+</button>
+        <button onClick={handleZoomOut}>-</button>
+        <button onClick={handleResetZoom}>⌖</button>
+      </div>
+
+      <svg className="map-svg" viewBox="0 0 700 550">
+        <rect id="map-bg" x="0" y="0" width="100%" height="100%" fill="none" pointerEvents="all" />
+        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          
+          {/* Green lawn */}
+          <rect x="50" y="40" width="600" height="470" rx="20" fill="var(--bg-map)" opacity="0.6" stroke="var(--border-color)" />
+          
+          {/* Draw Walkways */}
+          <g>
+            {CAMPUS_EDGES.map((edge, index) => {
+              const fromNode = CAMPUS_NODES[edge.from];
+              const toNode = CAMPUS_NODES[edge.to];
+              if (!fromNode || !toNode) return null;
+              return (
+                <line
+                  key={index}
+                  x1={fromNode.x}
+                  y1={fromNode.y}
+                  x2={toNode.x}
+                  y2={toNode.y}
+                  stroke={accessibility && !edge.accessible ? "rgba(239,68,68,0.4)" : "rgba(148,163,184,0.15)"}
+                  strokeWidth="8"
+                />
+              );
+            })}
+          </g>
+
+          {/* Render Active Animated Route */}
+          {routePath && routePath.length >= 2 && (
+            <g>
+              <path d={getPathD()} fill="none" stroke="var(--primary-color)" strokeWidth="6" />
+              <path d={getPathD()} fill="none" stroke="#ffffff" strokeWidth="2" strokeDasharray="8 8" style={{ animation: "march 1.5s linear infinite" }} />
+            </g>
+          )}
+
+          {/* Render Nodes */}
+          {Object.values(CAMPUS_NODES).map((node) => (
+            <circle
+              key={node.id}
+              cx={node.x}
+              cy={node.y}
+              r={selectedFrom === node.id || selectedTo === node.id ? 10 : 8}
+              fill={selectedFrom === node.id ? "var(--success)" : selectedTo === node.id ? "var(--error)" : "var(--bg-card)"}
+              onClick={() => handleNodeClick(node.id)}
+            />
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+};
+
+export default MapView;
+```
+
+---
+
 ## 7. RESULTS & COMPARATIVE ANALYSIS
 
 ### 7.1 Algorithmic Routing Case Studies
@@ -643,7 +1110,6 @@ Physio Junction -----> Block 4 -----> Block 7 -----> Welfare Junction -----> Blo
 * **Destination**: `j-welfare`
 * **Dijkstra (Shortest)**: `["gate-1", "j-gate", "block-1", "block-3", "j-physio", "block-4", "block-7", "j-welfare"]` (360m)
 * **DFS (Alternative)**: `["gate-1", "j-gate", "block-1", "block-3", "j-physio", "block-8", "block-13", "j-welfare"]` (390m)
-* **Analysis**: The alternative route helps avoid high-traffic areas by taking a detour path.
 
 ---
 
@@ -654,8 +1120,6 @@ We measured the calculation speed of the compiled C++ engine compared to the Jav
 | :--- | :--- | :--- | :--- |
 | **Native C++ Engine** | **$135 \mu s$** | $< 1\%$ | $\approx 2.4 \text{ MB}$ |
 | **JavaScript Engine** | **$880 \mu s$** | $\approx 3.2\%$ | $\approx 18.5 \text{ MB}$ |
-
-The native C++ compiled binary is **6.5 times faster** and has a significantly smaller memory footprint than the JavaScript engine.
 
 ---
 
