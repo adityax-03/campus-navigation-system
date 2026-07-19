@@ -1474,7 +1474,219 @@ module.exports = authMiddleware;
 
 ---
 
+### 6.9 React Client Routing and Route Protection (`frontend/src/App.js`)
+Configures routes, manages public-only auth protection, and verifies active sessions.
+
+```javascript
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import Landing from "./pages/Landing";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div style={{
+        display: "flex", 
+        height: "100vh", 
+        width: "100vw", 
+        justifyContent: "center", 
+        alignItems: "center",
+        backgroundColor: "var(--bg-color)",
+        color: "var(--primary-color)",
+        fontSize: "24px",
+        fontWeight: "bold"
+      }}>
+        Loading CCNS...
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+const AuthRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
+  
+  return children;
+};
+
+function App() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route 
+              path="/login" 
+              element={
+                <AuthRoute>
+                  <Login />
+                </AuthRoute>
+              } 
+            />
+            <Route 
+              path="/register" 
+              element={
+                <AuthRoute>
+                  <Register />
+                </AuthRoute>
+              } 
+            />
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
+
+export default App;
+```
+
+---
+
+### 6.10 Application CSS Variables Design System (`frontend/src/index.css`)
+Specifies layout configurations, glassmorphic filters, marching animations, and light/dark colors.
+
+```css
+:root {
+  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --primary-color: #6366f1;
+  --primary-dark: #4f46e5;
+  --primary-light: #e0e7ff;
+  --primary-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --secondary-color: #a855f7;
+  
+  --bg-color: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-card: #ffffff;
+  --bg-input: #f1f5f9;
+  --bg-map: #f0fdf4;
+  
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border-color: rgba(99, 102, 241, 0.08);
+  --border-focus: #6366f1;
+  --shadow-md: 0 10px 25px -5px rgba(99, 102, 241, 0.05);
+  
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --transition-speed: 0.3s;
+}
+
+[data-theme="dark"] {
+  --bg-color: #0b0f19;
+  --bg-sidebar: #111827;
+  --bg-card: #1f2937;
+  --bg-input: #374151;
+  --bg-map: #1e293b;
+  
+  --text-main: #f9fafb;
+  --text-muted: #9ca3af;
+  --border-color: rgba(255, 255, 255, 0.07);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+}
+
+body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  transition: background-color var(--transition-speed);
+  overflow-x: hidden;
+}
+
+@keyframes march {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.glassmorphism {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] .glassmorphism {
+  background: rgba(31, 41, 55, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+```
+
+---
+
+### 6.11 Complete User Manual and Configuration Guide
+Follow these procedures to initialize and verify the College Campus Navigation System:
+
+1. **Environmental Variables Configuration**:
+   Create a `.env` file under `/backend` with the following variables:
+   ```env
+   MONGO_URI=mongodb+srv://codebyadi_db_user:Mac-adi-03@cluster0.zpvslia.mongodb.net/campusNavigationDB?retryWrites=true&w=majority
+   JWT_SECRET=CFsOpTKaHkmvsFGOj60M6Ec6MIVcwRSLeMhghhhBzCg9mnEdS0P91slGL9iPEd2j
+   PORT=5001
+   CORS_ORIGIN=http://localhost:3000,http://localhost:5173
+   NODE_ENV=development
+   ```
+
+2. **Seeding LPU Map Data**:
+   Navigate to the backend directory, install packages, and execute the seeder:
+   ```bash
+   cd backend
+   npm install
+   node config/seed.js
+   ```
+
+3. **Running the Express Server**:
+   Start the Node server (which compiles the C++ Pathfinder source code automatically):
+   ```bash
+   npm run dev
+   ```
+
+4. **Running the React Frontend**:
+   In a separate terminal, navigate to the frontend directory, install dependencies, and start the development server:
+   ```bash
+   cd frontend
+   npm install
+   npm start
+   ```
+
+5. **Deployment Guide for Render**:
+   - Create a Web Service for the backend, setting Root Directory as `backend`, Build Command as `npm install`, and Start Command as `npm start`. Add your environment variables.
+   - Create a Static Site for the frontend, setting Root Directory as `frontend`, Build Command as `npm run build`, Publish Directory as `build`, and add `REACT_APP_API_URL` pointing to the backend's URL.
+
+---
+
 ## 7. RESULTS & COMPARATIVE ANALYSIS
+
 
 
 ### 7.1 Algorithmic Routing Case Studies
