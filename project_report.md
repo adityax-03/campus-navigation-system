@@ -47,7 +47,7 @@ The application models the campus of Lovely Professional University (LPU) as a m
 
 A key feature of the system is the **Accessibility Mode**, which dynamically filters out walkways with stairs, routing users through wheelchair-accessible ramped paths. Real-time conditions are simulated using traffic and crowd view overlays on an interactive, custom SVG vector map that supports panning, zooming, and smooth path animations. Comprehensive unit tests validate the system.
 
-This report documents the architectural design, database schemas, algorithm formulations, complexity analyses, source code implementation, and test results of the CCNS project.
+This report documents the architectural design, database schemas, algorithm formulations, complexity analyses, source code implementation, style system rules, and test results of the CCNS project.
 
 ---
 
@@ -110,30 +110,102 @@ The system employs a MERN (MongoDB, Express, React, Node) stack combined with a 
 ### 4.2 Data Models and Schema Design
 The database uses Mongoose schemas to represent the graph components.
 
-#### 4.2.1 Node Model
+#### 4.2.1 Node Model (`backend/models/Node.js`)
 The `Node` represents any physical location on the LPU campus.
 ```javascript
+const mongoose = require("mongoose");
+
 const nodeSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true, index: true },
-  name: { type: String, required: true },
-  x: { type: Number, required: true },
-  y: { type: Number, required: true },
-  type: { type: String, enum: ['academic', 'hostel', 'library', 'sports', 'gate', 'junction', 'cafeteria'], required: true },
-  desc: { type: String },
-  isPOI: { type: Boolean, default: true }
+  id: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    index: true 
+  },
+  name: { 
+    type: String, 
+    required: true 
+  },
+  x: { 
+    type: Number, 
+    required: true 
+  }, // SVG Canvas X Coordinate
+  y: { 
+    type: Number, 
+    required: true 
+  }, // SVG Canvas Y Coordinate
+  type: { 
+    type: String, 
+    enum: ['academic', 'hostel', 'library', 'sports', 'gate', 'junction', 'cafeteria'], 
+    required: true 
+  },
+  desc: { 
+    type: String 
+  },
+  isPOI: { 
+    type: Boolean, 
+    default: true 
+  }
 });
+
+module.exports = mongoose.model("Node", nodeSchema);
 ```
 
-#### 4.2.2 Edge Model
+#### 4.2.2 Edge Model (`backend/models/Edge.js`)
 The `Edge` represents a walkway connecting two locations.
 ```javascript
+const mongoose = require("mongoose");
+
 const edgeSchema = new mongoose.Schema({
-  from: { type: String, required: true, index: true },
-  to: { type: String, required: true, index: true },
-  distance: { type: Number, required: true },
-  time: { type: Number, required: true },
-  accessible: { type: Boolean, default: true }
+  from: { 
+    type: String, 
+    required: true, 
+    index: true 
+  },
+  to: { 
+    type: String, 
+    required: true, 
+    index: true 
+  },
+  distance: { 
+    type: Number, 
+    required: true 
+  }, // Distance in meters
+  time: { 
+    type: Number, 
+    required: true 
+  },     // Walk time in minutes
+  accessible: { 
+    type: Boolean, 
+    default: true 
+  } // false if path contains stairs
 });
+
+module.exports = mongoose.model("Edge", edgeSchema);
+```
+
+#### 4.2.3 User Model (`backend/models/User.js`)
+Stores user details, favorites, and navigation history.
+```javascript
+const mongoose = require("mongoose");
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  registrationNo: { type: String, required: true, unique: true, uppercase: true },
+  email: { type: String, required: true, unique: true, lowercase: true },
+  password: { type: String, required: true },
+  role: { type: String, default: 'Student' },
+  favorites: [{ type: String }],
+  history: [{
+    from: { type: String, required: true },
+    to: { type: String, required: true },
+    distance: { type: String },
+    time: { type: String },
+    date: { type: Date, default: Date.now }
+  }]
+});
+
+module.exports = mongoose.model("User", userSchema);
 ```
 
 ---
@@ -163,11 +235,6 @@ $$\text{if } D[u] + w(u, v) < D[v] \text{ then } D[v] = D[u] + w(u, v)$$
 
 ### 5.3 Breadth-First Search (BFS)
 BFS is used to find the path with the fewest intersection transitions (hops), treating all edges as having equal weight.
-
-#### 5.3.1 Mathematical Formulation
-BFS utilizes a FIFO queue $Q$ to explore the vertices level by level. It starts at the source node $s$, marks it as visited, and pushes it to $Q$.
-$$\text{For each vertex } u \text{ popped from } Q, \text{ we inspect all its neighbors } v.$$
-If neighbor $v$ is not visited, we mark it as visited, record its parent as $u$, and push it to $Q$. The first time target node $t$ is reached, the path is guaranteed to have the minimum number of edge hops.
 
 ---
 
@@ -1082,7 +1149,333 @@ export default MapView;
 
 ---
 
+### 6.5 React Route Planner Sidebar (`frontend/src/components/RoutePlanner.js`)
+Provides dropdown options to select paths, choose pathfinding algorithms, and view step-by-step instructions.
+
+```javascript
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { API_BASE_URL } from "../config";
+import { CAMPUS_NODES, generateDirections, dijkstra, bfs, dfs } from "../services/mapData";
+import { useAuth } from "../context/AuthContext";
+
+const RoutePlanner = ({
+  selectedFrom,
+  selectedTo,
+  setSelectedFrom,
+  setSelectedTo,
+  setRoutePath,
+  setRouteInfo,
+  routeInfo,
+  accessibility
+}) => {
+  const [algo, setAlgo] = useState("dijkstra");
+  const [directions, setDirections] = useState([]);
+  const [altRouteInfo, setAltRouteInfo] = useState(null);
+  const [showAlt, setShowAlt] = useState(false);
+  const { addHistory } = useAuth();
+
+  const pois = Object.values(CAMPUS_NODES).filter((n) => n.isPOI);
+
+  const handleSwap = () => {
+    const temp = selectedFrom;
+    setSelectedFrom(selectedTo);
+    setSelectedTo(temp);
+    setRoutePath([]);
+    setRouteInfo(null);
+    setAltRouteInfo(null);
+    setDirections([]);
+  };
+
+  const handleFindRoute = async () => {
+    if (!selectedFrom || !selectedTo) return;
+
+    let result = null;
+
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/routes/route`, {
+        params: {
+          from: selectedFrom,
+          to: selectedTo,
+          algo,
+          accessibility: accessibility ? "1" : "0"
+        },
+        timeout: 2000
+      });
+
+      if (response.data && response.data.success) {
+        result = response.data;
+      }
+    } catch (err) {
+      console.warn("Backend offline, falling back to local JS solver:", err.message);
+    }
+
+    if (!result) {
+      if (algo === "dijkstra") {
+        result = dijkstra(selectedFrom, selectedTo, accessibility);
+      } else if (algo === "bfs") {
+        result = bfs(selectedFrom, selectedTo, accessibility);
+      } else if (algo === "dfs") {
+        result = dfs(selectedFrom, selectedTo, accessibility);
+      }
+    }
+
+    if (result && result.path && result.path.length > 0) {
+      setRoutePath(result.path);
+      setRouteInfo(result);
+      setDirections(generateDirections(result.path));
+      
+      const startNodeName = CAMPUS_NODES[selectedFrom]?.name || selectedFrom;
+      const endNodeName = CAMPUS_NODES[selectedTo]?.name || selectedTo;
+      addHistory({
+        from: startNodeName,
+        to: endNodeName,
+        distance: `${result.distance}m`,
+        time: `${result.time} min`
+      });
+    } else {
+      alert("No route found! Paths might be blocked by accessibility filters.");
+    }
+  };
+
+  useEffect(() => {
+    if (selectedFrom && selectedTo && routeInfo) {
+      handleFindRoute();
+    }
+  }, [accessibility, algo]);
+
+  return (
+    <div className="route-planner-panel">
+      <div className="planner-title">
+        <h3>Route Planner</h3>
+      </div>
+
+      <div className="route-inputs-container">
+        <div className="route-inputs-col">
+          <select value={selectedFrom} onChange={(e) => setSelectedFrom(e.target.value)}>
+            <option value="">Choose starting point...</option>
+            {pois.map((node) => (
+              <option key={node.id} value={node.id} disabled={node.id === selectedTo}>
+                {node.name}
+              </option>
+            ))}
+          </select>
+
+          <select value={selectedTo} onChange={(e) => setSelectedTo(e.target.value)}>
+            <option value="">Choose destination...</option>
+            {pois.map((node) => (
+              <option key={node.id} value={node.id} disabled={node.id === selectedFrom}>
+                {node.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button onClick={handleSwap}>↕</button>
+      </div>
+
+      <div className="form-group">
+        <label>Search Algorithm</label>
+        <select value={algo} onChange={(e) => setAlgo(e.target.value)}>
+          <option value="dijkstra">(Recommended) Dijkstra's Shortest Path</option>
+          <option value="bfs">BFS (Fewest Hops)</option>
+          <option value="dfs">DFS (Alternative Paths)</option>
+        </select>
+      </div>
+
+      <button className="btn-find-route" onClick={handleFindRoute} disabled={!selectedFrom || !selectedTo}>
+        Find Route
+      </button>
+
+      {routeInfo && (
+        <div className="route-output-container">
+          <div className="route-stats-summary">
+            <span>⏱ {routeInfo.time} min ({routeInfo.distance}m)</span>
+          </div>
+          <div className="route-directions-list">
+            {directions.map((step, idx) => (
+              <div key={idx} className="direction-step">
+                <div className="step-number-dot">{step.step}</div>
+                <div className="step-details">
+                  <p className="step-instruction">{step.instruction}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default RoutePlanner;
+```
+
+---
+
+### 6.6 Security Middleware Details (`backend/middleware/sanitize.js`)
+Sanitizes user input to prevent database injection attacks.
+
+```javascript
+function sanitizeObject(obj) {
+  if (obj === null || obj === undefined) return obj;
+  if (typeof obj !== "object") return obj;
+
+  for (const key of Object.keys(obj)) {
+    if (key.startsWith("$")) {
+      delete obj[key];
+      continue;
+    }
+    if (key.includes(".")) {
+      delete obj[key];
+      continue;
+    }
+    if (typeof obj[key] === "object") {
+      sanitizeObject(obj[key]);
+    }
+    if (typeof obj[key] === "string" && obj[key].startsWith("$")) {
+      obj[key] = obj[key].replace(/^\$/, "");
+    }
+  }
+
+  return obj;
+}
+
+const mongoSanitize = (req, res, next) => {
+  if (req.body) {
+    sanitizeObject(req.body);
+  }
+  if (req.params) {
+    sanitizeObject(req.params);
+  }
+  next();
+};
+
+module.exports = mongoSanitize;
+```
+
+---
+
+### 6.7 Database Configuration and Seeding Details (`backend/config/db.js` & `backend/config/seed.js`)
+The database connection helper and map seeder logic populate LPU blocks, nodes, and pathways into the MongoDB Atlas cluster.
+
+#### Database Connection Helper (`db.js`)
+```javascript
+const mongoose = require("mongoose");
+
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB Connected Successfully to campusNavigationDB");
+  } catch (error) {
+    console.error("MongoDB Connection Failed:", error);
+    process.exit(1);
+  }
+};
+
+module.exports = connectDB;
+```
+
+#### Map Seeder Script (`seed.js`)
+```javascript
+const mongoose = require("mongoose");
+const path = require("path");
+require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
+const connectDB = require("./db");
+const Node = require("../models/Node");
+const Edge = require("../models/Edge");
+
+const CAMPUS_NODES = [
+  { id: "gate-1", name: "Main Gate", x: 520, y: 500, type: "gate", desc: "LPU Main Entrance Gate", isPOI: true },
+  { id: "block-1", name: "Block 1 (Fashion)", x: 460, y: 460, type: "academic", desc: "School of Fashion Design", isPOI: true },
+  { id: "block-2", name: "Block 2 (Baldev Raj Aud)", x: 370, y: 480, type: "academic", desc: "Baldev Raj Auditorium", isPOI: true },
+  { id: "block-3", name: "Block 3 (Physio)", x: 490, y: 400, type: "academic", desc: "School of Physiotherapy", isPOI: true },
+  { id: "block-4", name: "Block 4 (Pharmacy)", x: 430, y: 360, type: "academic", desc: "School of Pharmaceutical Sciences (Block 4)", isPOI: true },
+  { id: "block-6", name: "Block 6 (Arch)", x: 350, y: 390, type: "academic", desc: "School of Architecture & Design", isPOI: true },
+  { id: "block-7", name: "Block 7 (Pharmacy)", x: 390, y: 320, type: "academic", desc: "School of Pharmaceutical Sciences (Block 7)", isPOI: true },
+  { id: "block-8", name: "Block 8 (Fine Arts)", x: 310, y: 350, type: "academic", desc: "School of Animation & Fine Arts", isPOI: true },
+  { id: "gh-9-12", name: "Girls Hostel 9-12", x: 460, y: 310, type: "hostel", desc: "Girls Hostel Blocks 9, 10, 11, and 12", isPOI: true }
+];
+
+const CAMPUS_EDGES = [
+  { from: "gate-1", to: "j-gate", distance: 50, time: 0.6, accessible: true },
+  { from: "j-gate", to: "block-1", distance: 60, time: 0.8, accessible: true },
+  { from: "j-gate", to: "block-2", distance: 100, time: 1.3, accessible: true },
+  { from: "block-1", to: "block-3", distance: 50, time: 0.7, accessible: true },
+  { from: "block-2", to: "block-6", distance: 60, time: 0.8, accessible: true }
+];
+
+const seedDB = async () => {
+  try {
+    await connectDB();
+    console.log("Dropping old nodes and edges...");
+    await Node.deleteMany({});
+    await Edge.deleteMany({});
+
+    console.log("Inserting campus nodes...");
+    await Node.insertMany(CAMPUS_NODES);
+    console.log(`Successfully seeded ${CAMPUS_NODES.length} nodes`);
+
+    console.log("Inserting campus edges...");
+    await Edge.insertMany(CAMPUS_EDGES);
+    console.log(`Successfully seeded ${CAMPUS_EDGES.length} edges`);
+
+    console.log("Database Seeding Completed Successfully.");
+    process.exit(0);
+  } catch (error) {
+    console.error("Seeding failed:", error);
+    process.exit(1);
+  }
+};
+
+seedDB();
+```
+
+---
+
+### 6.8 JWT Authentication Middleware (`backend/middleware/authMiddleware.js`)
+Validates user JWT tokens on API requests requiring authorization.
+
+```javascript
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
+
+const authMiddleware = async (req, res, next) => {
+  const authHeader = req.header("Authorization");
+  const queryToken = req.query.token;
+  
+  let token;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.split(" ")[1];
+  } else if (queryToken) {
+    token = queryToken;
+  }
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: "No token, authorization denied" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id).select("-password");
+    
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: "User does not exist" });
+    }
+
+    next();
+  } catch (err) {
+    res.status(401).json({ success: false, message: "Token is not valid" });
+  }
+};
+
+module.exports = authMiddleware;
+```
+
+---
+
 ## 7. RESULTS & COMPARATIVE ANALYSIS
+
 
 ### 7.1 Algorithmic Routing Case Studies
 The system was verified with three key routing scenarios representing campus walkway use cases:
